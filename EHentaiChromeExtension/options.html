@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+  <head>
+    <title>E-Hentai Helper - Options</title>
+    <script src="options.js"></script>
+  </head>
+  <body>
+    <div align="middle">
+      <h1>E-Hentai Helper</h1>
+      <h2>Options</h2>
+      <table style="border-spacing: 0px">
+        <tr>
+          <td width="150">Download folder:</td>
+          <td>
+            <span id="defaultDownloadFolder"><u>[Default download folder]/</u></span>
+            <input type="text" id="intermediateDownloadPath" name="intermediateDownloadPath" style="width: 300px;">
+          </td>
+        </tr>
+        <tr>
+          <td>Save gallery information:</td>
+          <td colspan="2">
+            <table style="border-spacing: 0px">
+              <tr>
+                <td width="70">
+                  <input type="checkbox" id="saveMetadataInfo" name="saveMetadata">Info
+                </td>
+                <td>
+                  <input type="checkbox" id="saveMetadataTags" name="saveMetadata">Tags
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td>Filename conflict action:</td>
+          <td colspan="2">
+            <table style="border-spacing: 0px">
+              <tr>
+                <td width="70">
+                  <input type="radio" id="filenameConflictActionUniquify" name="filenameConflictAction" value="uniquify" checked="checked"/>Uniquify
+                </td>
+                <td>
+                  <input type="radio" id="filenameConflictActionOverwrite" name="filenameConflictAction" value="overwrite"/>Overwrite
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+      <button id="save" style="margin: 20px;">Save</button>
+      <div id="status"></div>
+    </div>
+  </body>
+</html>
