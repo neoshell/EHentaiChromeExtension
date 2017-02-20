@@ -10,7 +10,9 @@
       <h2>Options</h2>
       <table style="border-spacing: 0px">
         <tr>
-          <td width="150">Download folder:</td>
+          <td width="150">
+            <span title="For security reasons, you can only set a directory inside the default download folder.">Download folder:</span>
+          </td>
           <td>
             <span id="defaultDownloadFolder"><u>[Default download folder]/</u></span>
             <input type="text" id="intermediateDownloadPath" name="intermediateDownloadPath" style="width: 300px;">
@@ -44,6 +46,14 @@
                 </td>
               </tr>
             </table>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span title="The interval between each image download. This is to avoid blocking due to high QPS.">Download interval:</span>
+          </td>
+          <td colspan="2">
+            <input type="text" id="downloadInterval" name="downloadInterval" style="width: 50px;"> ms
           </td>
         </tr>
       </table>

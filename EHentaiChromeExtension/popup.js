@@ -1,24 +1,29 @@
 var PATTERN_GALLERY_PAGE_URL = /https?:\/\/e[-x]hentai.org\/g\/*/;
 var PATTERN_IMAGE_PAGE_URL = /https?:\/\/e[-x]hentai.org\/s\/*/;
-var PATTERN_INVALID_FILENAME_CHAR = /[\\\/:\*\?\"<>\|]/g;
+var PATTERN_INVALID_FILENAME_CHAR = /[\\/:*?"<>|.~]/g;
 
 // Default config.
 var DEFAULT_INTERMEDIATE_DOWNLOAD_PATH = 'e-hentai helper/';
 var DEFAULT_SAVE_GALLERY_INFO = false;
 var DEFAULT_SAVE_GALLERY_TAGS = false;
-var DEFAULT_FILENAME_CONFLICT_ACTION = 'overwrite';
+var DEFAULT_FILENAME_CONFLICT_ACTION = 'uniquify';
+var DEFAULT_DOWNLOAD_INTERVAL = 300;  // In ms.
 
 // User's config.
-var intermediateDownloadPath = '';
-var saveGalleryInfo = false;
-var saveGalleryTags = false;
-var filenameConflictAction = '';
+var intermediateDownloadPath = DEFAULT_INTERMEDIATE_DOWNLOAD_PATH;
+var saveGalleryInfo = DEFAULT_SAVE_GALLERY_INFO;
+var saveGalleryTags = DEFAULT_SAVE_GALLERY_TAGS;
+var filenameConflictAction = DEFAULT_FILENAME_CONFLICT_ACTION;
+var downloadInterval = DEFAULT_DOWNLOAD_INTERVAL;
 
 // Gallery information.
 var galleryFrontPageUrl = '';
-var numGalleryPages = 0;
+var galleryPageInfo = new Object();
 var galleryInfo = new Object();
 var galleryTags = new Object();
+
+// UI control.
+var buttonDownload = null;
 
 // Basic Utils ================================================================
 
@@ -52,12 +57,6 @@ function htmlToDOM(html, title) {
   return doc;
 }
 
-function extractUrls(html) {
-  var doc = htmlToDOM(html, '');
-  var urls = [].slice.apply(doc.getElementsByTagName('a'));
-  return urls;
-}
-
 function keyValuePairToString(key, val) {
   var separator = '\t';
   var terminator = '\n';
@@ -71,19 +70,23 @@ function isEHentaiUrl(url) {
 }
 
 function extractNumGalleryPages(html) {
-  var numPages = 0;
+  var pageInfo = {
+    numImagesPerPage: 0,
+    totalNumImages: 0,
+    numPages: 0
+  };
   var doc = htmlToDOM(html, '');
   var elements = doc.getElementsByClassName('gpc');
   var pageInfoStr = elements[0].innerHTML;
   var patternImageNumbers = /Showing 1 - (\d+) of (\d+) images/;
   patternImageNumbers.exec(pageInfoStr);
-  var numImagesPerPage = RegExp.$1;
-  var totalNumImages = RegExp.$2;
-  if (numImagesPerPage != null && totalNumImages != null) {
-    numPages = Math.floor((parseInt(totalNumImages) - 1) /
-                          parseInt(numImagesPerPage)) + 1;
+  pageInfo.numImagesPerPage = RegExp.$1;
+  pageInfo.totalNumImages = RegExp.$2;
+  if (pageInfo.numImagesPerPage != null && pageInfo.totalNumImages != null) {
+    pageInfo.numPages = Math.ceil(parseInt(pageInfo.totalNumImages) /
+                                  parseInt(pageInfo.numImagesPerPage));
   }
-  return numPages;
+  return pageInfo;
 }
 
 function extractGalleryInfo(html) {
@@ -182,39 +185,60 @@ function galleryTagsToString(tags) {
 }
 
 function extractImagePageUrls(html) {
-  var urls = extractUrls(html);
-  for (var i = 0; i < urls.length;) {
-    if (PATTERN_IMAGE_PAGE_URL.test(urls[i])) {
-      ++i;
-    } else {
-      urls.splice(i, 1);
-    }
+  var urls = new Array();
+  var doc = htmlToDOM(html, '');
+  var elements = doc.getElementsByClassName('gdtm');
+  for (var i = 0; i < elements.length; i++) {
+    urls.push(elements[i].childNodes[0].childNodes[0].href);
   }
   return urls;
 }
 
 function removeInvalidCharFromFilename(filename) {
-  return filename.replace(PATTERN_INVALID_FILENAME_CHAR, ' ');
+  return filename.replace(PATTERN_INVALID_FILENAME_CHAR, ' ')
+                 .replace(/\s+$/, '');
+}
+
+function processImagePage(url) {
+  httpGetAsync(url, function(responseText) {
+    var doc = htmlToDOM(responseText, '');
+    var imageUrl = doc.getElementById('img').src;
+    var filename = imageUrl.substring(imageUrl.lastIndexOf('/') + 1);
+    chrome.downloads.download({
+      url: imageUrl,
+      filename: intermediateDownloadPath + '/' + filename,
+      conflictAction: filenameConflictAction});
+  });
+}
+
+function processGalleryPage(url) {
+  httpGetAsync(url, function(responseText) {
+    var imagePageUrls = extractImagePageUrls(responseText);
+    processImagePage(imagePageUrls[0]);  // Start immediately.
+    var imageIndex = 1;
+    var imageInterval = setInterval(function() {
+      if(imageIndex == imagePageUrls.length) {
+        clearInterval(imageInterval);
+        return;
+      }
+      processImagePage(imagePageUrls[imageIndex]);
+      imageIndex++;
+    }, downloadInterval);
+  });
 }
 
 function downloadImages() {
-  for (var i = 0; i < numGalleryPages; i++) {  // Page level.
-    var galleryPageUrl = galleryFrontPageUrl + '?p=' + i;
-    httpGetAsync(galleryPageUrl, function(responseText) {
-      var imagePageUrls = extractImagePageUrls(responseText);
-      for (var i in imagePageUrls) {  // Image level.
-        httpGetAsync(imagePageUrls[i], function(responseText) {
-          var doc = htmlToDOM(responseText, '');
-          var imageUrl = doc.getElementById('img').src;
-          var filename = imageUrl.substring(imageUrl.lastIndexOf('/') + 1);
-          chrome.downloads.download({
-              url: imageUrl,
-              filename: intermediateDownloadPath + '/' + filename,
-              conflictAction: filenameConflictAction});
-        });
-      }
-    });
-  }
+  processGalleryPage(galleryFrontPageUrl);  // Start immediately.
+  var pageIndex = 1;
+  var pageInterval = setInterval(function() {
+    if(pageIndex == galleryPageInfo.numPages) {
+      clearInterval(pageInterval);
+      return;
+    }
+    var galleryPageUrl = galleryFrontPageUrl + '?p=' + pageIndex;
+    processGalleryPage(galleryPageUrl);
+    pageIndex++;
+  }, downloadInterval * galleryPageInfo.numImagesPerPage);
 }
 
 function generateTxtFile(text, reletiveDownloadPath, conflictAction) {
@@ -235,6 +259,9 @@ function showDefaultDownloadFolder() {
 }
 
 function buttonDownloadClick() {
+  buttonDownload.disabled = true;
+  updateStatus('Please do NOT close the extension popup page ' +
+               'before download finished.');
   downloadImages();
   if (saveGalleryInfo) {
     generateTxtFile(galleryInfoToString(galleryInfo),
@@ -251,34 +278,34 @@ function buttonDownloadClick() {
 document.addEventListener('DOMContentLoaded', function() {
   updateStatus('Initializing...');
 
-  var buttonDownload = document.getElementById('download');
+  buttonDownload = document.getElementById('download');
   buttonDownload.onclick = buttonDownloadClick;
 
   chrome.storage.sync.get({  // Load config.
     intermediateDownloadPath: DEFAULT_INTERMEDIATE_DOWNLOAD_PATH,
     saveGalleryInfo:          DEFAULT_SAVE_GALLERY_INFO,
     saveGalleryTags:          DEFAULT_SAVE_GALLERY_TAGS,
-    filenameConflictAction:   DEFAULT_FILENAME_CONFLICT_ACTION
+    filenameConflictAction:   DEFAULT_FILENAME_CONFLICT_ACTION,
+    downloadInterval:         DEFAULT_DOWNLOAD_INTERVAL
   }, function(items) {
     intermediateDownloadPath = items.intermediateDownloadPath;
     saveGalleryInfo = items.saveGalleryInfo;
     saveGalleryTags = items.saveGalleryTags;
     filenameConflictAction = items.filenameConflictAction;
+    downloadInterval = items.downloadInterval;
 
     getCurrentTabUrl(function(url) {
       if (isEHentaiUrl(url)) {  // On valid page.
         galleryFrontPageUrl = url.substring(0, url.lastIndexOf('/') + 1);
         httpGetAsync(galleryFrontPageUrl, function(responseText) {
-          numGalleryPages = extractNumGalleryPages(responseText);
+          galleryPageInfo = extractNumGalleryPages(responseText);
           galleryInfo = extractGalleryInfo(responseText);
           galleryTags = extractGalleryTags(responseText);
           intermediateDownloadPath +=
               removeInvalidCharFromFilename(galleryInfo.name);
           buttonDownload.hidden = false;
           buttonDownload.disabled = false;
-          updateStatus('Ready to download. ' +
-                       'Please do NOT close the extension popup page ' +
-                       'before download finished.');
+          updateStatus('Ready to download.');
         });
       } else {  // Not on valid page.
         buttonDownload.disabled = true;

@@ -1,11 +1,12 @@
-var PATTERN_INVALID_FILE_PATH_CHAR = /[:\*\?\"<>\|]/g;
+var PATTERN_INVALID_FILE_PATH_CHAR = /[:*?"<>|]/g;
 var STATUS_SHOWING_DURATION = 1000;  // In ms.
 
 // Default config.
 var DEFAULT_INTERMEDIATE_DOWNLOAD_PATH = 'e-hentai helper/';
 var DEFAULT_SAVE_GALLERY_INFO = false;
 var DEFAULT_SAVE_GALLERY_TAGS = false;
-var DEFAULT_FILENAME_CONFLICT_ACTION = 'overwrite';
+var DEFAULT_FILENAME_CONFLICT_ACTION = 'uniquify';
+var DEFAULT_DOWNLOAD_INTERVAL = 300;  // In ms.
 
 // UI controls.
 var inputIntermediateDownloadPath = null;
@@ -13,6 +14,7 @@ var inputSaveMetadataInfo = null;
 var inputSaveMetadataTags = null;
 var inputFilenameConflictActionUniquify = null;
 var inputFilenameConflictActionOverwrite = null;
+var inputDownloadInterval = null;
 
 function showDefaultDownloadFolder() {
   chrome.downloads.showDefaultFolder();
@@ -65,7 +67,8 @@ function restoreOptions() {
     intermediateDownloadPath: DEFAULT_INTERMEDIATE_DOWNLOAD_PATH,
     saveGalleryInfo:          DEFAULT_SAVE_GALLERY_INFO,
     saveGalleryTags:          DEFAULT_SAVE_GALLERY_TAGS,
-    filenameConflictAction:   DEFAULT_FILENAME_CONFLICT_ACTION
+    filenameConflictAction:   DEFAULT_FILENAME_CONFLICT_ACTION,
+    downloadInterval:         DEFAULT_DOWNLOAD_INTERVAL
   }, function(items) {  // Update UI.
     inputIntermediateDownloadPath.value = items.intermediateDownloadPath;
     inputSaveMetadataInfo.checked = items.saveGalleryInfo;
@@ -77,6 +80,7 @@ function restoreOptions() {
                inputFilenameConflictActionOverwrite.value){
         inputFilenameConflictActionOverwrite.checked = true;
     }
+    inputDownloadInterval.value = items.downloadInterval;
   });
 }
 
@@ -85,6 +89,7 @@ function saveOptions() {
   var saveGalleryInfo = inputSaveMetadataInfo.checked;
   var saveGalleryTags = inputSaveMetadataTags.checked;
   var filenameConflictAction = getFilenameConflictAction();
+  var downloadInterval = inputDownloadInterval.value;
   intermediateDownloadPath = processFilePath(intermediateDownloadPath);
   if (intermediateDownloadPath == null) {  // process file path.
     updateStatus('Failed to save options. ' +
@@ -97,7 +102,8 @@ function saveOptions() {
     intermediateDownloadPath: intermediateDownloadPath,
     saveGalleryInfo:          saveGalleryInfo,
     saveGalleryTags:          saveGalleryTags,
-    filenameConflictAction:   filenameConflictAction
+    filenameConflictAction:   filenameConflictAction,
+    downloadInterval:         downloadInterval
   }, function() {  // Show a feedback message to user.
     showEphemeralStatus('Options saved.', STATUS_SHOWING_DURATION);
   });
@@ -112,6 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('filenameConflictActionUniquify');
   inputFilenameConflictActionOverwrite =
     document.getElementById('filenameConflictActionOverwrite');
+  inputDownloadInterval = document.getElementById('downloadInterval');
 
   document.getElementById('defaultDownloadFolder').onclick =
       showDefaultDownloadFolder;
