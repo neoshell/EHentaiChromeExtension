@@ -26,4 +26,9 @@ Right use cases: You're browsing e-hentai and find a gallery you like very much,
 适用的场景：你在浏览e-hentai时看到一个很喜欢的图集，希望马上下载下来。<br>
 <br>
 Wrong use cases: Batch download multiple galleries. For example: download all galleries made by a particular artist.<br>
-不适用的场景：批量下载多个图集。例如：下载某个作者的全部图集。
+不适用的场景：批量下载多个图集。例如：下载某个作者的全部图集。<br>
+<br>
+
+### How to install<br> 如何安装
+
+https://chrome.google.com/webstore/detail/e-hentai-helper/gednopkniamkpndgpeomfieenlaipgjd
