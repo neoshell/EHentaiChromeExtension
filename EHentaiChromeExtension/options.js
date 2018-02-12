@@ -3,6 +3,7 @@ var STATUS_SHOWING_DURATION = 1000;  // In ms.
 
 // Default config.
 var DEFAULT_INTERMEDIATE_DOWNLOAD_PATH = 'e-hentai helper/';
+var DEFAULT_SAVE_ORIGINAL_IMAGES = false;
 var DEFAULT_SAVE_GALLERY_INFO = false;
 var DEFAULT_SAVE_GALLERY_TAGS = false;
 var DEFAULT_FILENAME_CONFLICT_ACTION = 'uniquify';
@@ -10,6 +11,7 @@ var DEFAULT_DOWNLOAD_INTERVAL = 300;  // In ms.
 
 // UI controls.
 var inputIntermediateDownloadPath = null;
+var inputSaveOriginalImages = null;
 var inputSaveMetadataInfo = null;
 var inputSaveMetadataTags = null;
 var inputFilenameConflictActionUniquify = null;
@@ -65,12 +67,14 @@ function showEphemeralStatus(text, duration) {
 function restoreOptions() {
   chrome.storage.sync.get({
     intermediateDownloadPath: DEFAULT_INTERMEDIATE_DOWNLOAD_PATH,
+    saveOriginalImages:       DEFAULT_SAVE_ORIGINAL_IMAGES,
     saveGalleryInfo:          DEFAULT_SAVE_GALLERY_INFO,
     saveGalleryTags:          DEFAULT_SAVE_GALLERY_TAGS,
     filenameConflictAction:   DEFAULT_FILENAME_CONFLICT_ACTION,
     downloadInterval:         DEFAULT_DOWNLOAD_INTERVAL
   }, function(items) {  // Update UI.
     inputIntermediateDownloadPath.value = items.intermediateDownloadPath;
+    inputSaveOriginalImages.checked = items.saveOriginalImages;
     inputSaveMetadataInfo.checked = items.saveGalleryInfo;
     inputSaveMetadataTags.checked = items.saveGalleryTags;
     if (items.filenameConflictAction ==
@@ -86,6 +90,7 @@ function restoreOptions() {
 
 function saveOptions() {
   var intermediateDownloadPath = inputIntermediateDownloadPath.value;
+  var saveOriginalImages = inputSaveOriginalImages.checked;
   var saveGalleryInfo = inputSaveMetadataInfo.checked;
   var saveGalleryTags = inputSaveMetadataTags.checked;
   var filenameConflictAction = getFilenameConflictAction();
@@ -100,6 +105,7 @@ function saveOptions() {
   inputIntermediateDownloadPath.value = intermediateDownloadPath;
   chrome.storage.sync.set({
     intermediateDownloadPath: intermediateDownloadPath,
+    saveOriginalImages:       saveOriginalImages,
     saveGalleryInfo:          saveGalleryInfo,
     saveGalleryTags:          saveGalleryTags,
     filenameConflictAction:   filenameConflictAction,
@@ -112,6 +118,7 @@ function saveOptions() {
 document.addEventListener('DOMContentLoaded', function() {
   inputIntermediateDownloadPath =
     document.getElementById('intermediateDownloadPath');
+  inputSaveOriginalImages = document.getElementById('saveOriginalImages');
   inputSaveMetadataInfo = document.getElementById('saveMetadataInfo');
   inputSaveMetadataTags = document.getElementById('saveMetadataTags');
   inputFilenameConflictActionUniquify =

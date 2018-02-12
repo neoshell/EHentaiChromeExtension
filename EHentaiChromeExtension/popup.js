@@ -1,9 +1,12 @@
+var EXTENSION_NAME = 'E-Hentai Helper';
+
 var PATTERN_GALLERY_PAGE_URL = /https?:\/\/e[-x]hentai.org\/g\/*/;
 var PATTERN_IMAGE_PAGE_URL = /https?:\/\/e[-x]hentai.org\/s\/*/;
 var PATTERN_INVALID_FILENAME_CHAR = /[\\/:*?"<>|.~]/g;
 
 // Default config.
 var DEFAULT_INTERMEDIATE_DOWNLOAD_PATH = 'e-hentai helper/';
+var DEFAULT_SAVE_ORIGINAL_IMAGES = false;
 var DEFAULT_SAVE_GALLERY_INFO = false;
 var DEFAULT_SAVE_GALLERY_TAGS = false;
 var DEFAULT_FILENAME_CONFLICT_ACTION = 'uniquify';
@@ -11,6 +14,7 @@ var DEFAULT_DOWNLOAD_INTERVAL = 300;  // In ms.
 
 // User's config.
 var intermediateDownloadPath = DEFAULT_INTERMEDIATE_DOWNLOAD_PATH;
+var saveOriginalImages = DEFAULT_SAVE_ORIGINAL_IMAGES;
 var saveGalleryInfo = DEFAULT_SAVE_GALLERY_INFO;
 var saveGalleryTags = DEFAULT_SAVE_GALLERY_TAGS;
 var filenameConflictAction = DEFAULT_FILENAME_CONFLICT_ACTION;
@@ -187,9 +191,15 @@ function galleryTagsToString(tags) {
 function extractImagePageUrls(html) {
   var urls = new Array();
   var doc = htmlToDOM(html, '');
+  // Normal previews.
   var elements = doc.getElementsByClassName('gdtm');
   for (var i = 0; i < elements.length; i++) {
     urls.push(elements[i].childNodes[0].childNodes[0].href);
+  }
+  // Large previews.
+  elements = doc.getElementsByClassName('gdtl');
+  for (var i = 0; i < elements.length; i++) {
+    urls.push(elements[i].childNodes[0].href);
   }
   return urls;
 }
@@ -203,11 +213,13 @@ function processImagePage(url) {
   httpGetAsync(url, function(responseText) {
     var doc = htmlToDOM(responseText, '');
     var imageUrl = doc.getElementById('img').src;
-    var filename = imageUrl.substring(imageUrl.lastIndexOf('/') + 1);
-    chrome.downloads.download({
-      url: imageUrl,
-      filename: intermediateDownloadPath + '/' + filename,
-      conflictAction: filenameConflictAction});
+    if (saveOriginalImages) {
+      var divDownloadOriginal = doc.getElementById('i7');
+      if (divDownloadOriginal) {
+        imageUrl = divDownloadOriginal.childNodes[3].href;
+      }
+    }
+    chrome.downloads.download({url: imageUrl});
   });
 }
 
@@ -241,12 +253,30 @@ function downloadImages() {
   }, downloadInterval * galleryPageInfo.numImagesPerPage);
 }
 
-function generateTxtFile(text, reletiveDownloadPath, conflictAction) {
+function generateTxtFile(text) {
   chrome.downloads.download({
-      url: 'data:text;charset=utf-8,' + encodeURI(text),
-      filename: reletiveDownloadPath,
-      conflictAction: conflictAction});
+      url: 'data:text;charset=utf-8,' + encodeURI(text)});
 }
+
+// Save to the corresponding folder and rename files.
+chrome.downloads.onDeterminingFilename.addListener(
+    function(downloadItem, suggest) {
+      if (downloadItem.byExtensionName == EXTENSION_NAME) {
+        var filename = downloadItem.filename;
+        var fileType = filename.substring(filename.lastIndexOf('.') + 1);
+        if (fileType == 'txt') {  // Metadata.
+          var url = downloadItem.url;
+          // 'name' is the first key of info file.
+          var isInfoFile = url.substring(url.indexOf(',') + 1)
+                              .startsWith('name');
+          filename = isInfoFile ? 'info.txt' : 'tags.txt';
+        }
+        filename = intermediateDownloadPath + '/' + filename;
+        suggest({
+            filename: filename,
+            conflictAction: filenameConflictAction});
+      }
+});
 
 // UI control =================================================================
 
@@ -261,17 +291,13 @@ function showDefaultDownloadFolder() {
 function buttonDownloadClick() {
   buttonDownload.disabled = true;
   updateStatus('Please do NOT close the extension popup page ' +
-               'before download finished.');
+               'before ALL download tasks start.');
   downloadImages();
   if (saveGalleryInfo) {
-    generateTxtFile(galleryInfoToString(galleryInfo),
-                    intermediateDownloadPath + '/info.txt',
-                    filenameConflictAction);
+    generateTxtFile(galleryInfoToString(galleryInfo));
   }
   if (saveGalleryTags) {
-    generateTxtFile(galleryTagsToString(galleryTags),
-                    intermediateDownloadPath + '/tags.txt',
-                    filenameConflictAction);
+    generateTxtFile(galleryTagsToString(galleryTags));
   }
 }
 
@@ -283,12 +309,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
   chrome.storage.sync.get({  // Load config.
     intermediateDownloadPath: DEFAULT_INTERMEDIATE_DOWNLOAD_PATH,
+    saveOriginalImages:       DEFAULT_SAVE_ORIGINAL_IMAGES,
     saveGalleryInfo:          DEFAULT_SAVE_GALLERY_INFO,
     saveGalleryTags:          DEFAULT_SAVE_GALLERY_TAGS,
     filenameConflictAction:   DEFAULT_FILENAME_CONFLICT_ACTION,
     downloadInterval:         DEFAULT_DOWNLOAD_INTERVAL
   }, function(items) {
     intermediateDownloadPath = items.intermediateDownloadPath;
+    saveOriginalImages = items.saveOriginalImages;
     saveGalleryInfo = items.saveGalleryInfo;
     saveGalleryTags = items.saveGalleryTags;
     filenameConflictAction = items.filenameConflictAction;
@@ -310,8 +338,8 @@ document.addEventListener('DOMContentLoaded', function() {
       } else {  // Not on valid page.
         buttonDownload.disabled = true;
         buttonDownload.hidden = true;
-        updateStatus('The extension cannot work on current page. ' +
-                     'Please go to E-Hentai gallery page.');
+        updateStatus('Cannot work on the current page. ' +
+                     'Please go to a E-Hentai / ExHentai gallery page.');
       }
     });
   });
