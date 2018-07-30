@@ -82,10 +82,10 @@ function extractNumGalleryPages(html) {
   var doc = htmlToDOM(html, '');
   var elements = doc.getElementsByClassName('gpc');
   var pageInfoStr = elements[0].innerHTML;
-  var patternImageNumbers = /Showing 1 - (\d+) of (\d+) images/;
+  var patternImageNumbers = /Showing 1 - (\d+) of (\d*,*\d+) images/;
   patternImageNumbers.exec(pageInfoStr);
   pageInfo.numImagesPerPage = RegExp.$1;
-  pageInfo.totalNumImages = RegExp.$2;
+  pageInfo.totalNumImages = (RegExp.$2).replace(",","");
   if (pageInfo.numImagesPerPage != null && pageInfo.totalNumImages != null) {
     pageInfo.numPages = Math.ceil(parseInt(pageInfo.totalNumImages) /
                                   parseInt(pageInfo.numImagesPerPage));
