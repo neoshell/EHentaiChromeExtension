@@ -31,4 +31,10 @@ Wrong use cases: Batch download multiple galleries. For example: download all ga
 
 ### How to install<br> 如何安装
 
-https://chrome.google.com/webstore/detail/e-hentai-helper/gednopkniamkpndgpeomfieenlaipgjd
+~~https://chrome.google.com/webstore/detail/e-hentai-helper/gednopkniamkpndgpeomfieenlaipgjd~~<br>
+<br>
+The extension was removed from Chrome Web Store due to some policy restriction. Will update the extension and re-submit soon. If you still want to use this extension now, please clone the repository and load from local directory.<br>
+由于一些政策限制，该扩展已被Chrome网上应用店移除。将尽快更新并重新发布该扩展。如果您现在仍想使用该扩展，请clone该repository，然后从本地加载。<br>
+<br>
+
+
